@@ -21,33 +21,67 @@ public class Solver {
 
 	/* You answers go below here */
 
+	//
+
 	// Part A.1
-	// Worst case complexity : ???
-	// Best case complexity : ???
+	// Worst case complexity : O(v)
+	// Best case complexity : O(1)
 	public boolean checkClause(int[] assignment, int[] clause) {
+		for (int literal : clause) {
+			if (assignment[Math.abs(literal)] * literal > 0) {
+				return true;
+			}
+		}
+
 		return false;
 	}
 
 	// Part A.2
-	// Worst case complexity : ???
-	// Best case complexity : ???
+	// Worst case complexity : O(l * c)
+	// Best case complexity : O(l)
 	public boolean checkClauseDatabase(int[] assignment, int[][] clauseDatabase) {
-		return false;
+		for (int[] clause : clauseDatabase) {
+			if (!checkClause(assignment, clause)) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	// Part A.3
-	// Worst case complexity : ???
-	// Best case complexity : ???
+	// Worst case complexity : O(v)
+	// Best case complexity : O(1)
 	public int checkClausePartial(int[] partialAssignment, int[] clause) {
-		return 0;
+		boolean isUnknown = false;
+
+		for (int literal : clause) {
+			int absolute = Math.abs(literal);
+			if (partialAssignment[absolute] * literal > 0) return 1;
+			if (partialAssignment[absolute] == 0) isUnknown = true;
+		}
+
+		return isUnknown ? 0 : -1;
 	}
 
 	// Part A.4
-	// Worst case complexity : ???
-	// Best case complexity : ???
+	// Worst case complexity : O(v)
+	// Best case complexity : O(1)
 	public int findUnit(int[] partialAssignment, int[] clause) {
-		return 0;
+		int valLiteral = 0;
+
+		for (int literal : clause) {
+			if (partialAssignment[Math.abs(literal)] == 0) {
+				if (valLiteral == 0) valLiteral = literal;
+				else return 0;
+			} else if (partialAssignment[Math.abs(literal)] == -literal) {
+				return 0;
+			}
+		}
+
+		return valLiteral;
 	}
+
 
 	// Part B
 	// I think this can solve ????
