@@ -1,11 +1,15 @@
+/**
+ * @author Supermarcel10
+ */
+
 package com.github.supermarcel10;
 
 // IN1002 Introduction to Algorithms
 // Coursework 2022/2023
 //
 // Submission by
-// YOUR_NAME_GOES_HERE
-// YOUR_EMAIL_GOES_HERE
+// Marcel Barlik
+// marcel.barlik@city.ac.uk
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
