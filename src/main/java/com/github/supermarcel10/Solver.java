@@ -18,14 +18,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+
 
 public class Solver {
 	private int [][] clauseDatabase = null;
 	private int numberOfVariables = 0;
 
 	/* You answers go below here */
-
-	//
 
 	// Part A.1
 	// Worst case complexity : O(v)
@@ -89,9 +89,58 @@ public class Solver {
 
 	// Part B
 	// I think this can solve ????
-	int[] checkSat(int[][] clauseDatabase) {
-		return null;
+	public int[] checkSat(int[][] clauseDatabase) {
+		int[] partialAssignment = new int[numberOfVariables + 1];
+		return dpll(clauseDatabase, partialAssignment);
 	}
+
+	private int[] dpll(int[][] clauseDatabase, int[] partialAssignment) {
+		boolean isUnknown = false;
+
+		for (int[] clause : clauseDatabase) {
+			int clauseCheck = checkClausePartial(partialAssignment, clause);
+			if (clauseCheck == -1) {
+				return null;
+			} else if (clauseCheck == 0) {
+				isUnknown = true;
+			}
+		}
+
+		if (!isUnknown) {
+			// Assign 1 (true) to all remaining unknown variables before returning the result
+			for (int i = 1; i < partialAssignment.length; i++) {
+				if (partialAssignment[i] == 0) {
+					partialAssignment[i] = 1;
+				}
+			}
+			return partialAssignment;
+		}
+
+		int unassignedVar = 0;
+		for (int i = 1; i < partialAssignment.length; i++) {
+			if (partialAssignment[i] == 0) {
+				unassignedVar = i;
+				break;
+			}
+		}
+
+		if (unassignedVar == 0) {
+			return null;
+		}
+
+		int[] newAssignment = Arrays.copyOf(partialAssignment, partialAssignment.length);
+
+		newAssignment[unassignedVar] = 1;
+		int[] result = dpll(clauseDatabase, newAssignment);
+		if (result != null) {
+			return result;
+		}
+
+		newAssignment[unassignedVar] = -1;
+		return dpll(clauseDatabase, newAssignment);
+	}
+
+
 
 	/*****************************************************************\
 	 *** DO NOT CHANGE! DO NOT CHANGE! DO NOT CHANGE! DO NOT CHANGE! ***

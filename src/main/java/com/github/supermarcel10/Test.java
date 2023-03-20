@@ -11,7 +11,7 @@ public class Test {
 	private static void testCheckClause() {
 		Solver solver = new Solver();
 		// Test case 1
-		int[] assignment = {0, 1, -1, 1};
+		int[] assignment = {0, 1, -1, -1};
 		int[] clause = {1, -2, 3};
 		boolean result = solver.checkClause(assignment, clause);
 		System.out.println("Test checkClause 1: " + (result ? "PASSED" : "FAILED"));
@@ -23,7 +23,7 @@ public class Test {
 		Solver solver = new Solver();
 		// Test case 1
 		int[] assignment = {0, 1, -1, 1};
-		int[][] clauseDatabase = {{1, -2}, {-1, -2, 3}, {2}};
+		int[][] clauseDatabase = {{1, -2}, {-1, -2, 3}, {-2}};
 		boolean result = solver.checkClauseDatabase(assignment, clauseDatabase);
 		System.out.println("Test checkClauseDatabase 1: " + (result ? "PASSED" : "FAILED"));
 
