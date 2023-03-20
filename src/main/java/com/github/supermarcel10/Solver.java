@@ -17,13 +17,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 
 
 public class Solver {
 	private int [][] clauseDatabase = null;
 	private int numberOfVariables = 0;
+	private double[] activity;
+
+	static long startTime, endTime;
 
 	/* You answers go below here */
 
@@ -87,14 +89,38 @@ public class Solver {
 	}
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	// Part B
 	// I think this can solve ????
 	public int[] checkSat(int[][] clauseDatabase) {
+		activity = new double[numberOfVariables + 1];
 		int[] partialAssignment = new int[numberOfVariables + 1];
-		return dpll(clauseDatabase, partialAssignment);
+
+		unitPropagation(clauseDatabase, partialAssignment);
+
+		return DPLL(clauseDatabase, partialAssignment);
 	}
 
-	private int[] dpll(int[][] clauseDatabase, int[] partialAssignment) {
+
+	private int[] DPLL(int[][] clauseDatabase, int[] partialAssignment) {
 		boolean isUnknown = false;
 
 		for (int[] clause : clauseDatabase) {
@@ -104,6 +130,18 @@ public class Solver {
 			} else if (clauseCheck == 0) {
 				isUnknown = true;
 			}
+		}
+
+		// Pure Literal Elimination
+		Map<Integer, Integer> pureLiterals = getPureLiterals(clauseDatabase, partialAssignment);
+		if (!pureLiterals.isEmpty()) {
+			int[] newAssignment = Arrays.copyOf(partialAssignment, partialAssignment.length);
+
+			for (int literal : pureLiterals.keySet()) {
+				newAssignment[Math.abs(literal)] = literal > 0 ? 1 : -1;
+			}
+
+			return DPLL(clauseDatabase, newAssignment);
 		}
 
 		if (!isUnknown) {
@@ -116,13 +154,8 @@ public class Solver {
 			return partialAssignment;
 		}
 
-		int unassignedVar = 0;
-		for (int i = 1; i < partialAssignment.length; i++) {
-			if (partialAssignment[i] == 0) {
-				unassignedVar = i;
-				break;
-			}
-		}
+		// Use the VSIDS heuristic to select the next unassigned variable
+		int unassignedVar = selectVariable(partialAssignment);
 
 		if (unassignedVar == 0) {
 			return null;
@@ -131,14 +164,139 @@ public class Solver {
 		int[] newAssignment = Arrays.copyOf(partialAssignment, partialAssignment.length);
 
 		newAssignment[unassignedVar] = 1;
-		int[] result = dpll(clauseDatabase, newAssignment);
+		int[] result = DPLL(clauseDatabase, newAssignment);
 		if (result != null) {
 			return result;
+		} else {
+			// Update activity scores if a conflict is detected
+			int[] conflictClause = null;
+			for (int[] clause : clauseDatabase) {
+				if (checkClausePartial(newAssignment, clause) == -1) {
+					conflictClause = clause;
+					break;
+				}
+			}
+			if (conflictClause != null) {
+				updateActivity(conflictClause);
+			}
 		}
 
 		newAssignment[unassignedVar] = -1;
-		return dpll(clauseDatabase, newAssignment);
+		return DPLL(clauseDatabase, newAssignment);
 	}
+
+
+
+	// Returns a Map of pure literals and their counts
+	public Map<Integer, Integer> getPureLiterals(int[][] clauseDatabase, int[] partialAssignment) {
+		Set<Integer> positiveLiterals = new HashSet<>();
+		Set<Integer> negativeLiterals = new HashSet<>();
+
+		for (int[] clause : clauseDatabase) {
+			for (int literal : clause) {
+				int var = Math.abs(literal);
+				if (partialAssignment[var] == 0) {
+					if (literal > 0) {
+						positiveLiterals.add(literal);
+					} else {
+						negativeLiterals.add(literal);
+					}
+				}
+			}
+		}
+
+		Map<Integer, Integer> pureLiterals = new HashMap<>();
+
+		for (int literal : positiveLiterals) {
+			if (!negativeLiterals.contains(-literal)) {
+				pureLiterals.put(literal, 1);
+			}
+		}
+
+		for (int literal : negativeLiterals) {
+			if (!positiveLiterals.contains(-literal)) {
+				pureLiterals.put(literal, 1);
+			}
+		}
+
+		return pureLiterals;
+	}
+
+
+	private void unitPropagation(int[][] clauseDatabase, int[] partialAssignment) {
+		boolean foundUnitClause;
+		do {
+			foundUnitClause = false;
+			outer: for (int[] clause : clauseDatabase) {
+				int unassignedLiteral = 0;
+				boolean clauseSatisfied = false;
+
+				for (int literal : clause) {
+					int var = Math.abs(literal);
+					if (partialAssignment[var] == 0) {
+						if (unassignedLiteral == 0) {
+							unassignedLiteral = literal;
+						} else {
+							continue outer;
+						}
+					} else if (partialAssignment[var] == (literal > 0 ? 1 : -1)) {
+						clauseSatisfied = true;
+						break;
+					}
+				}
+
+				if (!clauseSatisfied && unassignedLiteral != 0) {
+					int var = Math.abs(unassignedLiteral);
+					partialAssignment[var] = unassignedLiteral > 0 ? 1 : -1;
+					foundUnitClause = true;
+				}
+			}
+		} while (foundUnitClause);
+
+	}
+
+
+	private void updateActivity(int[] conflictClause) {
+		double maxActivity = 0;
+		for (int literal : conflictClause) {
+			int var = Math.abs(literal);
+			activity[var] += 1;
+			maxActivity = Math.max(maxActivity, activity[var]);
+		}
+
+		// Decay the activity scores periodically
+		if (maxActivity > 1e100) {
+			for (int i = 1; i < activity.length; i++) {
+				activity[i] *= 1e-100;
+			}
+		}
+	}
+
+
+	private int selectVariable(int[] partialAssignment) {
+		int selectedVar = 0;
+		double maxActivity = -1;
+		for (int i = 1; i < partialAssignment.length; i++) {
+			if (partialAssignment[i] == 0 && activity[i] > maxActivity) {
+				selectedVar = i;
+				maxActivity = activity[i];
+			}
+		}
+		return selectedVar;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -162,8 +320,13 @@ public class Solver {
 
 			Path file = Paths.get(fileName);
 			BufferedReader reader = Files.newBufferedReader(file);
+
+			startTime = System.currentTimeMillis();
+
 			returnValue = mySolver.runSatSolver(reader);
 
+			endTime = System.currentTimeMillis();
+			System.out.println("Time taken: " + (endTime - startTime) + "ms");
 			return;
 
 		} catch (Exception e) {
