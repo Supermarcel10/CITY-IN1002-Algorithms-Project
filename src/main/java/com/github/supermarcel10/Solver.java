@@ -145,7 +145,6 @@ public class Solver {
 		}
 
 		if (!isUnknown) {
-			// Assign 1 (true) to all remaining unknown variables before returning the result
 			for (int i = 1; i < partialAssignment.length; i++) {
 				if (partialAssignment[i] == 0) {
 					partialAssignment[i] = 1;
@@ -154,7 +153,6 @@ public class Solver {
 			return partialAssignment;
 		}
 
-		// Use the VSIDS heuristic to select the next unassigned variable
 		int unassignedVar = selectVariable(partialAssignment);
 
 		if (unassignedVar == 0) {
@@ -168,7 +166,6 @@ public class Solver {
 		if (result != null) {
 			return result;
 		} else {
-			// Update activity scores if a conflict is detected
 			int[] conflictClause = null;
 			for (int[] clause : clauseDatabase) {
 				if (checkClausePartial(newAssignment, clause) == -1) {
@@ -186,41 +183,31 @@ public class Solver {
 	}
 
 
-
 	// Returns a Map of pure literals and their counts
 	public Map<Integer, Integer> getPureLiterals(int[][] clauseDatabase, int[] partialAssignment) {
-		Set<Integer> positiveLiterals = new HashSet<>();
-		Set<Integer> negativeLiterals = new HashSet<>();
+		Map<Integer, Integer> literalCount = new HashMap<>();
 
 		for (int[] clause : clauseDatabase) {
 			for (int literal : clause) {
 				int var = Math.abs(literal);
 				if (partialAssignment[var] == 0) {
-					if (literal > 0) {
-						positiveLiterals.add(literal);
-					} else {
-						negativeLiterals.add(literal);
-					}
+					literalCount.put(literal, literalCount.getOrDefault(literal, 0) + 1);
 				}
 			}
 		}
 
 		Map<Integer, Integer> pureLiterals = new HashMap<>();
 
-		for (int literal : positiveLiterals) {
-			if (!negativeLiterals.contains(-literal)) {
-				pureLiterals.put(literal, 1);
-			}
-		}
-
-		for (int literal : negativeLiterals) {
-			if (!positiveLiterals.contains(-literal)) {
+		for (Map.Entry<Integer, Integer> entry : literalCount.entrySet()) {
+			int literal = entry.getKey();
+			if (!literalCount.containsKey(-literal)) {
 				pureLiterals.put(literal, 1);
 			}
 		}
 
 		return pureLiterals;
 	}
+
 
 
 	private void unitPropagation(int[][] clauseDatabase, int[] partialAssignment) {
