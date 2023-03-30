@@ -33,12 +33,16 @@ public class Solver {
 	// Worst case complexity : O(v)
 	// Best case complexity : O(1)
 	public boolean checkClause(int[] assignment, int[] clause) {
-		for (int literal : clause) {
-			if (assignment[Math.abs(literal)] * literal > 0) {
-				return true;
+		try {
+			for (int literal : clause) {
+				if (assignment[Math.abs(literal)] * literal > 0) {
+					return true;
+				}
 			}
+		} catch (ArrayIndexOutOfBoundsException e) {
+			System.out.println("Assignment is not long enough!");
+			return false;
 		}
-
 		return false;
 	}
 
@@ -46,12 +50,16 @@ public class Solver {
 	// Worst case complexity : O(l * c)
 	// Best case complexity : O(l)
 	public boolean checkClauseDatabase(int[] assignment, int[][] clauseDatabase) {
-		for (int[] clause : clauseDatabase) {
-			if (!checkClause(assignment, clause)) {
-				return false;
+		try {
+			for (int[] clause : clauseDatabase) {
+				if (!checkClause(assignment, clause)) {
+					return false;
+				}
 			}
+		} catch (ArrayIndexOutOfBoundsException e) {
+			System.out.println("Assignment is not long enough!");
+			return false;
 		}
-
 		return true;
 	}
 
