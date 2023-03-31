@@ -200,11 +200,10 @@ public class Solver {
 				.toArray(int[][]::new);
 	}
 
+	/*
+	1. Filter unit clauses and collect their literals in a set
+	 */
 	public boolean checkUnsat() {
-		// Print clauseDatabase for debugging
-		System.out.println(Arrays.deepToString(clauseDatabase));
-
-		// Filter unit clauses and collect their literals in a set
 		Set<Integer> unitLiterals = Arrays.stream(clauseDatabase)
 				.filter(clause -> clause.length == 1)
 				.map(clause -> clause[0])
