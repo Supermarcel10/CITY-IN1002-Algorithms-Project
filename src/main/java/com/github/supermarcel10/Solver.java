@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 
@@ -127,15 +128,20 @@ public class Solver {
 	}
 
 	public int[] startSat() {
-		System.out.println(Arrays.toString(assignment));
-		System.out.println(Arrays.deepToString(clauseDatabase));
+//		System.out.println(Arrays.toString(assignment));
+//		System.out.println(Arrays.deepToString(clauseDatabase));
 
 		optimiseClauses();
 
 		removeKnownClauses();
 
-		System.out.println(Arrays.toString(assignment));
-		System.out.println(Arrays.deepToString(clauseDatabase));
+//		System.out.println(Arrays.toString(assignment));
+//		System.out.println(Arrays.deepToString(clauseDatabase));
+
+		System.out.println(checkUnsat());
+
+//		System.out.println(Arrays.toString(assignment));
+//		System.out.println(Arrays.deepToString(clauseDatabase));
 
 		return assignment;
 	}
@@ -193,6 +199,21 @@ public class Solver {
 				)
 				.toArray(int[][]::new);
 	}
+
+	public boolean checkUnsat() {
+		// Print clauseDatabase for debugging
+		System.out.println(Arrays.deepToString(clauseDatabase));
+
+		// Filter unit clauses and collect their literals in a set
+		Set<Integer> unitLiterals = Arrays.stream(clauseDatabase)
+				.filter(clause -> clause.length == 1)
+				.map(clause -> clause[0])
+				.collect(Collectors.toSet());
+
+		// Check if there are any conflicting unit clauses
+		return unitLiterals.stream().anyMatch(literal -> unitLiterals.contains(-literal));
+	}
+
 
 
 
