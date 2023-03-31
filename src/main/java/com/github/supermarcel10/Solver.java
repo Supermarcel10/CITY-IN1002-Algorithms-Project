@@ -18,8 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 public class Solver {
@@ -128,20 +128,42 @@ public class Solver {
 	}
 
 	public int[] startSat() {
-//		System.out.println(Arrays.toString(assignment));
-//		System.out.println(Arrays.deepToString(clauseDatabase));
+		System.out.println(Arrays.toString(assignment));
+		System.out.println(Arrays.deepToString(clauseDatabase));
+
+		// TODO: Start recursion.
 
 		optimiseClauses();
 
+		System.out.println(Arrays.toString(assignment));
+		System.out.println(Arrays.deepToString(clauseDatabase));
+
 		removeKnownClauses();
 
-//		System.out.println(Arrays.toString(assignment));
-//		System.out.println(Arrays.deepToString(clauseDatabase));
+		System.out.println(Arrays.toString(assignment));
+		System.out.println(Arrays.deepToString(clauseDatabase));
 
-		System.out.println(checkUnsat());
+		// TODO: DPLL or CDCL
+		if (clauseDatabase.length == 1) {
+			assignment[Math.abs(clauseDatabase[0][0])] = clauseDatabase[0][0] / Math.abs(clauseDatabase[0][0]);
+		}
 
-//		System.out.println(Arrays.toString(assignment));
-//		System.out.println(Arrays.deepToString(clauseDatabase));
+		if (clauseDatabase.length == 0) {
+			return assignment;
+		} else if (checkUnsat()) return null;
+
+		// TODO: End recursion. Check if assignment is complete
+
+		// Default all unassigned variables to 1.
+		IntStream.range(1, assignment.length)
+				.forEach(i -> {
+					if (assignment[i] == 0) {
+						assignment[i] = 1;
+					}
+				});
+
+		System.out.println(Arrays.toString(assignment));
+		System.out.println(Arrays.deepToString(clauseDatabase));
 
 		return assignment;
 	}
@@ -156,13 +178,18 @@ public class Solver {
 	6. Remove clauses with assigned literals
 	 */
 	public void optimiseClauses() {
-		// Step 1, 2, and 3: Remove duplicates within each clause, sort literals, and remove duplicate clauses
+		// Step 1, 2, 3, and 4: Remove duplicates within each clause, sort literals, remove duplicate clauses, and remove literals and their negations within each clause
 		Set<List<Integer>> distinctSortedClauses = Arrays.stream(clauseDatabase)
-				.map(clause -> Arrays.stream(clause).distinct().boxed().sorted().collect(Collectors.toList()))
+				.map(clause -> Arrays.stream(clause)
+						.distinct()
+						.boxed()
+						.collect(Collectors.groupingBy(Math::abs, Collectors.summingInt(Integer::intValue))))
+				.map(literalSumMap -> literalSumMap.values().stream()
+						.filter(literalSum -> literalSum != 0)
+						.collect(Collectors.toList()))
+				.filter(clause -> !clause.isEmpty())
 				.collect(Collectors.toSet());
 
-		// Step 4: Remove clauses containing both a literal and its negation
-		distinctSortedClauses.removeIf(clause -> clause.stream().anyMatch(literal -> clause.contains(-literal)));
 
 		// Step 5: Collect unit clauses and assign values
 		List<Integer> unitClauses = distinctSortedClauses.stream()
@@ -184,20 +211,27 @@ public class Solver {
 	}
 
 	public void removeKnownClauses() {
-		List<Integer> nonZeroAssignments = new ArrayList<>();
-		for (int i = 0; i < assignment.length; i++) {
-			if (assignment[i] != 0) {
-				nonZeroAssignments.add(i * -assignment[i]);
-			}
-		}
+		List<Integer> nonZeroAssignments = IntStream.range(0, assignment.length)
+				.filter(i -> assignment[i] != 0)
+				.map(i -> i * assignment[i])
+				.boxed()
+				.toList();
 
-		System.out.println(nonZeroAssignments);
+		Set<Integer> inverseLiterals = nonZeroAssignments.stream()
+				.map(literal -> -literal)
+				.collect(Collectors.toSet());
+
+		// Filter out clauses containing any literals specified in nonZeroAssignments
 		clauseDatabase = Arrays.stream(clauseDatabase)
-				.map(clause -> Arrays.stream(clause)
-						.filter(literal -> !nonZeroAssignments.contains(literal) || nonZeroAssignments.contains(-literal))
-						.toArray()
-				)
+				.filter(clause -> Arrays.stream(clause).noneMatch(nonZeroAssignments::contains))
 				.toArray(int[][]::new);
+
+		// Remove inverse literals from the remaining clauses
+		for (int i = 0; i < clauseDatabase.length; i++) {
+			clauseDatabase[i] = Arrays.stream(clauseDatabase[i])
+					.filter(literal -> !inverseLiterals.contains(literal))
+					.toArray();
+		}
 	}
 
 	/*
