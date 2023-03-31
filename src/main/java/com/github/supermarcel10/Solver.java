@@ -18,13 +18,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 public class Solver {
 	private int [][] clauseDatabase = null;
-	private int numberOfVariables = 0;
-	private double[] activity;
+	private int[] assignment = null;
 
+	private int numberOfVariables = 0;
 	static long startTime, endTime;
 
 	/* You answers go below here */
@@ -119,166 +120,90 @@ public class Solver {
 	// Part B
 	// I think this can solve ????
 	public int[] checkSat(int[][] clauseDatabase) {
-		activity = new double[numberOfVariables + 1];
-		int[] partialAssignment = new int[numberOfVariables + 1];
+		assignment = new int[numberOfVariables + 1];
+		this.clauseDatabase = clauseDatabase;
 
-		unitPropagation(clauseDatabase, partialAssignment);
+		return startSat();
+	}
 
-		return DPLL(clauseDatabase, partialAssignment);
+	public int[] startSat() {
+		System.out.println(Arrays.toString(assignment));
+		System.out.println(Arrays.deepToString(clauseDatabase));
+
+		optimiseClauses();
+
+		removeKnownClauses();
+
+		System.out.println(Arrays.toString(assignment));
+		System.out.println(Arrays.deepToString(clauseDatabase));
+
+		return assignment;
 	}
 
 
-	private int[] DPLL(int[][] clauseDatabase, int[] partialAssignment) {
-		boolean isUnknown = false;
+	/*
+	1. Remove duplicates within each clause
+	2. Sort literals in each clause
+	3. Remove duplicate clauses
+	4. Remove clauses containing both a literal and its negation
+	5. Collect unit clauses and assign values
+	6. Remove clauses with assigned literals
+	 */
+	public void optimiseClauses() {
+		// Step 1, 2, and 3: Remove duplicates within each clause, sort literals, and remove duplicate clauses
+		Set<List<Integer>> distinctSortedClauses = Arrays.stream(clauseDatabase)
+				.map(clause -> Arrays.stream(clause).distinct().boxed().sorted().collect(Collectors.toList()))
+				.collect(Collectors.toSet());
 
-		for (int[] clause : clauseDatabase) {
-			int clauseCheck = checkClausePartial(partialAssignment, clause);
-			if (clauseCheck == -1) {
-				return null;
-			} else if (clauseCheck == 0) {
-				isUnknown = true;
-			}
+		// Step 4: Remove clauses containing both a literal and its negation
+		distinctSortedClauses.removeIf(clause -> clause.stream().anyMatch(literal -> clause.contains(-literal)));
+
+		// Step 5: Collect unit clauses and assign values
+		List<Integer> unitClauses = distinctSortedClauses.stream()
+				.filter(clause -> clause.size() == 1)
+				.map(clause -> clause.get(0))
+				.toList();
+		for (int unitClause : unitClauses) {
+			assignment[Math.abs(unitClause)] = unitClause / Math.abs(unitClause);
 		}
 
-		// Pure Literal Elimination
-		Map<Integer, Integer> pureLiterals = getPureLiterals(clauseDatabase, partialAssignment);
-		if (!pureLiterals.isEmpty()) {
-			int[] newAssignment = Arrays.copyOf(partialAssignment, partialAssignment.length);
+		// Step 6: Remove clauses with assigned literals
+		Set<Integer> assignedLiterals = new HashSet<>(unitClauses);
+		distinctSortedClauses.removeIf(clause -> clause.size() == 1 && assignedLiterals.contains(clause.get(0)));
 
-			for (int literal : pureLiterals.keySet()) {
-				newAssignment[Math.abs(literal)] = literal > 0 ? 1 : -1;
-			}
-
-			return DPLL(clauseDatabase, newAssignment);
-		}
-
-		if (!isUnknown) {
-			for (int i = 1; i < partialAssignment.length; i++) {
-				if (partialAssignment[i] == 0) {
-					partialAssignment[i] = 1;
-				}
-			}
-			return partialAssignment;
-		}
-
-		int unassignedVar = selectVariable(partialAssignment);
-
-		if (unassignedVar == 0) {
-			return null;
-		}
-
-		int[] newAssignment = Arrays.copyOf(partialAssignment, partialAssignment.length);
-
-		newAssignment[unassignedVar] = 1;
-		int[] result = DPLL(clauseDatabase, newAssignment);
-		if (result != null) {
-			return result;
-		} else {
-			int[] conflictClause = null;
-			for (int[] clause : clauseDatabase) {
-				if (checkClausePartial(newAssignment, clause) == -1) {
-					conflictClause = clause;
-					break;
-				}
-			}
-			if (conflictClause != null) {
-				updateActivity(conflictClause);
-			}
-		}
-
-		newAssignment[unassignedVar] = -1;
-		return DPLL(clauseDatabase, newAssignment);
+		// Convert the set of distinctSortedClauses back to the int[][] format for clauseDatabase
+		clauseDatabase = distinctSortedClauses.stream()
+				.map(clause -> clause.stream().mapToInt(Integer::intValue).toArray())
+				.toArray(int[][]::new);
 	}
 
-
-	// Returns a Map of pure literals and their counts
-	public Map<Integer, Integer> getPureLiterals(int[][] clauseDatabase, int[] partialAssignment) {
-		Map<Integer, Integer> literalCount = new HashMap<>();
-
-		for (int[] clause : clauseDatabase) {
-			for (int literal : clause) {
-				int var = Math.abs(literal);
-				if (partialAssignment[var] == 0) {
-					literalCount.put(literal, literalCount.getOrDefault(literal, 0) + 1);
-				}
+	public void removeKnownClauses() {
+		List<Integer> nonZeroAssignments = new ArrayList<>();
+		for (int i = 0; i < assignment.length; i++) {
+			if (assignment[i] != 0) {
+				nonZeroAssignments.add(i * -assignment[i]);
 			}
 		}
 
-		Map<Integer, Integer> pureLiterals = new HashMap<>();
-
-		for (Map.Entry<Integer, Integer> entry : literalCount.entrySet()) {
-			int literal = entry.getKey();
-			if (!literalCount.containsKey(-literal)) {
-				pureLiterals.put(literal, 1);
-			}
-		}
-
-		return pureLiterals;
+		System.out.println(nonZeroAssignments);
+		clauseDatabase = Arrays.stream(clauseDatabase)
+				.map(clause -> Arrays.stream(clause)
+						.filter(literal -> !nonZeroAssignments.contains(literal) || nonZeroAssignments.contains(-literal))
+						.toArray()
+				)
+				.toArray(int[][]::new);
 	}
 
 
 
-	private void unitPropagation(int[][] clauseDatabase, int[] partialAssignment) {
-		boolean foundUnitClause;
-		do {
-			foundUnitClause = false;
-			outer: for (int[] clause : clauseDatabase) {
-				int unassignedLiteral = 0;
-				boolean clauseSatisfied = false;
-
-				for (int literal : clause) {
-					int var = Math.abs(literal);
-					if (partialAssignment[var] == 0) {
-						if (unassignedLiteral == 0) {
-							unassignedLiteral = literal;
-						} else {
-							continue outer;
-						}
-					} else if (partialAssignment[var] == (literal > 0 ? 1 : -1)) {
-						clauseSatisfied = true;
-						break;
-					}
-				}
-
-				if (!clauseSatisfied && unassignedLiteral != 0) {
-					int var = Math.abs(unassignedLiteral);
-					partialAssignment[var] = unassignedLiteral > 0 ? 1 : -1;
-					foundUnitClause = true;
-				}
-			}
-		} while (foundUnitClause);
-
-	}
 
 
-	private void updateActivity(int[] conflictClause) {
-		double maxActivity = 0;
-		for (int literal : conflictClause) {
-			int var = Math.abs(literal);
-			activity[var] += 1;
-			maxActivity = Math.max(maxActivity, activity[var]);
-		}
-
-		// Decay the activity scores periodically
-		if (maxActivity > 1e100) {
-			for (int i = 1; i < activity.length; i++) {
-				activity[i] *= 1e-100;
-			}
-		}
-	}
 
 
-	private int selectVariable(int[] partialAssignment) {
-		int selectedVar = 0;
-		double maxActivity = -1;
-		for (int i = 1; i < partialAssignment.length; i++) {
-			if (partialAssignment[i] == 0 && activity[i] > maxActivity) {
-				selectedVar = i;
-				maxActivity = activity[i];
-			}
-		}
-		return selectedVar;
-	}
+
+
+
+
 
 
 
