@@ -23,9 +23,10 @@ import java.util.stream.IntStream;
 
 
 public class Solver {
-	private int [][] clauseDatabase = null;
+	private int[][] clauseDatabase = null;
 	private int[] assignment = null;
 
+	private boolean assignmentChanged = true;
 	private int numberOfVariables = 0;
 	static long startTime, endTime;
 
@@ -128,46 +129,39 @@ public class Solver {
 	}
 
 	public int[] startSat() {
-		System.out.println(Arrays.toString(assignment));
-		System.out.println(Arrays.deepToString(clauseDatabase));
-
-		// TODO: Start recursion.
-
-		optimiseClauses();
-
-		System.out.println(Arrays.toString(assignment));
-		System.out.println(Arrays.deepToString(clauseDatabase));
-
-		removeKnownClauses();
+		// TODO: Possibly remove last run since it's the same.
+		while (assignmentChanged) {
+			optimiseClauses();
+			removeKnownClauses();
+		}
 
 		System.out.println(Arrays.toString(assignment));
 		System.out.println(Arrays.deepToString(clauseDatabase));
 
 		// TODO: DPLL or CDCL
-		if (clauseDatabase.length == 1) {
-			assignment[Math.abs(clauseDatabase[0][0])] = clauseDatabase[0][0] / Math.abs(clauseDatabase[0][0]);
-		}
+		decisionLevel = new int[assignment.length];
+		CDCL();
+//		if (clauseDatabase.length == 1) {
+//			assignment[Math.abs(clauseDatabase[0][0])] = clauseDatabase[0][0] / Math.abs(clauseDatabase[0][0]);
+//		}
 
-		if (clauseDatabase.length == 0) {
-			return assignment;
-		} else if (checkUnsat()) return null;
-
-		// TODO: End recursion. Check if assignment is complete
+//		if (clauseDatabase.length == 0) {
+//			return assignment;
+//		} else if (checkUnsat()) return null;
 
 		// Default all unassigned variables to 1.
-		IntStream.range(1, assignment.length)
-				.forEach(i -> {
-					if (assignment[i] == 0) {
-						assignment[i] = 1;
-					}
-				});
+//		IntStream.range(1, assignment.length)
+//				.forEach(i -> {
+//					if (assignment[i] == 0) {
+//						assignment[i] = 1;
+//					}
+//				});
 
 		System.out.println(Arrays.toString(assignment));
 		System.out.println(Arrays.deepToString(clauseDatabase));
 
 		return assignment;
 	}
-
 
 	/*
 	1. Remove duplicates within each clause
@@ -196,7 +190,10 @@ public class Solver {
 				.filter(clause -> clause.size() == 1)
 				.map(clause -> clause.get(0))
 				.toList();
+
+		assignmentChanged = false;
 		for (int unitClause : unitClauses) {
+			assignmentChanged = true;
 			assignment[Math.abs(unitClause)] = unitClause / Math.abs(unitClause);
 		}
 
@@ -247,6 +244,231 @@ public class Solver {
 		return unitLiterals.stream().anyMatch(literal -> unitLiterals.contains(-literal));
 	}
 
+	private List<int[]> reasons;
+	private List<Integer> decisionLevels;
+	private int[] decisionLevel;
+	private Stack<Integer> assignmentStack;
+	private boolean conflict;
+
+	public void CDCL() {
+		// Initialize necessary data structures
+		assignmentStack = new Stack<>();
+		decisionLevels = new ArrayList<>(Collections.nCopies(assignment.length, 0));
+		decisionLevel = new int[assignment.length];
+		reasons = new ArrayList<>(Collections.nCopies(assignment.length, null));
+		conflict = false;
+
+		// Apply the forced literals from the partial assignment
+		for (int i = 1; i < assignment.length; i++) {
+			if (assignment[i] != 0) {
+				int literal = (assignment[i] > 0) ? i : -i;
+				propagate(literal);
+			}
+		}
+
+		while (true) {
+			if (conflict) {
+				if (decisionLevels.get(Math.abs(assignmentStack.peek())) == 0) {
+					assignment = null;
+					return;
+				}
+				int[] learnedClause = analyzeConflict();
+				int backtrackLevel = computeBacktrackLevel(learnedClause);
+				backtrack(backtrackLevel);
+				clauseDatabase = Arrays.copyOf(clauseDatabase, clauseDatabase.length + 1);
+				clauseDatabase[clauseDatabase.length - 1] = learnedClause;
+				conflict = false;
+			} else if (assignmentStack.size() == assignment.length) {
+				return;
+			} else {
+				int literal = chooseLiteral();
+				if (literal == 0) return;
+				int currentDecisionLevel = decisionLevels.get(Math.abs(literal) - 1);
+				decisionLevels.set(Math.abs(literal), currentDecisionLevel + 1);
+				propagate(literal);
+			}
+		}
+	}
+
+//	private void propagate(int literal) {
+//		assignmentStack.push(literal);
+//		for (int[] clause : clauseDatabase) {
+//			int unassignedCount = 0;
+//			int unassignedLiteral = 0;
+//			boolean satisfied = false;
+//			for (int lit : clause) {
+//				int value = assignment[Math.abs(lit)];
+//				if (value == 0) {
+//					unassignedCount++;
+//					unassignedLiteral = lit;
+//				} else if ((value > 0) == (lit > 0)) {
+//					satisfied = true;
+//					break;
+//				}
+//			}
+//
+//			if (!satisfied && unassignedCount == 1) {
+//				int varIndex = Math.abs(unassignedLiteral);
+//				assignment[Math.abs(unassignedLiteral)] = Integer.signum(unassignedLiteral);
+//				decisionLevel[varIndex] = decisionLevels.get(varIndex) + 1;
+//				assignmentStack.push(unassignedLiteral);
+//				reasons.set(varIndex, clause);
+//			} else if (!satisfied && unassignedCount == 0) {
+//				conflict = true;
+//			}
+//		}
+//
+//		System.out.println("assignment after propagate: " + Arrays.toString(assignment));
+//	}
+
+	private void propagate(int literal) {
+		assignmentStack.push(literal);
+		for (int[] clause : clauseDatabase) {
+			int unassignedCount = 0;
+			int unassignedLiteral = 0;
+			boolean satisfied = false;
+			for (int lit : clause) {
+				int value = assignment[Math.abs(lit)];
+				if (value == 0) {
+					unassignedCount++;
+					unassignedLiteral = lit;
+				} else if ((value > 0) == (lit > 0)) {
+					satisfied = true;
+					break;
+				}
+			}
+
+			System.out.println("clause: " + Arrays.toString(clause));
+			System.out.println("unassignedCount: " + unassignedCount);
+			System.out.println("unassignedLiteral: " + unassignedLiteral);
+			System.out.println("satisfied: " + satisfied);
+
+			if (!satisfied && unassignedCount == 1) {
+				int varIndex = Math.abs(unassignedLiteral);
+				System.out.println("propagating " + ((unassignedLiteral > 0) ? "" : "-") + varIndex + " to " + ((literal > 0) ? "true" : "false"));
+				assignment[varIndex] = Integer.signum(literal);
+				decisionLevel[varIndex] = decisionLevels.get(varIndex) + 1;
+				assignmentStack.push(unassignedLiteral);
+				reasons.set(varIndex, clause);
+			} else if (!satisfied && unassignedCount == 0) {
+				conflict = true;
+			}
+		}
+	}
+
+	private int computeBacktrackLevel(int[] learnedClause) {
+		int maxDecisionLevel = -1;
+		int secondMaxDecisionLevel = -1;
+
+		for (int literal : learnedClause) {
+			int decisionLevel = decisionLevels.get(Math.abs(literal));
+			if (decisionLevel > maxDecisionLevel) {
+				secondMaxDecisionLevel = maxDecisionLevel;
+				maxDecisionLevel = decisionLevel;
+			} else if (decisionLevel > secondMaxDecisionLevel && decisionLevel < maxDecisionLevel) {
+				secondMaxDecisionLevel = decisionLevel;
+			}
+		}
+
+		return secondMaxDecisionLevel;
+	}
+
+	private int[] analyzeConflict() {
+		Map<Integer, Integer> level = new HashMap<>();
+		Deque<Integer> trail = new ArrayDeque<>();
+		int maxLevel = 0;
+
+		// Construct implication graph and find the maximum decision level
+		for (int i = 0; i < assignment.length; i++) {
+			if (assignment[i] != 0) {
+				int literal = (assignment[i] > 0) ? i + 1 : -(i + 1);
+				trail.addLast(literal);
+				level.put(literal, decisionLevel[i]);
+				maxLevel = Math.max(maxLevel, decisionLevel[i]);
+			}
+		}
+
+		// Initialize variables for the conflict analysis
+		List<Integer> learnedClause = new ArrayList<>();
+		int conflictLiteral = 0;
+		int numLiteralsFromMaxLevel = 0;
+		int lastUIP = 0;
+
+		// Traverse the implication graph in reverse order
+		while (!trail.isEmpty()) {
+			int literal = trail.removeLast();
+			if (level.get(literal) == maxLevel) {
+				conflictLiteral = literal;
+				numLiteralsFromMaxLevel++;
+			}
+
+			int[] reasonClause = reasons.get(Math.abs(literal));
+			if (reasonClause != null) {
+				for (int reasonLiteral : reasonClause) {
+					if (reasonLiteral != -conflictLiteral) {
+						if (!level.containsKey(reasonLiteral)) {
+							level.put(reasonLiteral, decisionLevel[Math.abs(reasonLiteral) - 1]);
+							trail.addLast(reasonLiteral);
+						}
+					}
+				}
+			} else {
+				if (numLiteralsFromMaxLevel == 1) {
+					lastUIP = literal;
+					break;
+				} else {
+					learnedClause.add(-literal);
+					numLiteralsFromMaxLevel--;
+				}
+			}
+		}
+
+		// Add the last UIP to the learned clause and return it
+		learnedClause.add(-lastUIP);
+		return learnedClause.stream().mapToInt(Integer::intValue).toArray();
+	}
+
+	private void backtrack(int level) {
+		while (!assignmentStack.isEmpty() && decisionLevels.get(Math.abs(assignmentStack.peek())) > level) {
+			int literal = assignmentStack.pop();
+			assignment[Math.abs(literal)] = 0;
+			decisionLevels.set(Math.abs(literal), level);
+			reasons.set(Math.abs(literal), null);
+		}
+	}
+
+	// DLIS Heuristic
+	private int chooseLiteral() {
+		int maxFrequency = -1;
+		int chosenLiteral = 0;
+
+		// Count frequencies of literals in unsatisfied clauses
+		Map<Integer, Integer> literalFrequencies = new HashMap<>();
+		for (int[] clause : clauseDatabase) {
+			boolean unsatisfied = true;
+			for (int literal : clause) {
+				int variable = Math.abs(literal);
+				if (assignment[variable - 1] == Integer.signum(literal)) {
+					unsatisfied = false;
+					break;
+				}
+			}
+			if (unsatisfied) {
+				for (int literal : clause) {
+					int variable = Math.abs(literal);
+					if (assignment[variable - 1] == 0) {
+						literalFrequencies.put(literal, literalFrequencies.getOrDefault(literal, 0) + 1);
+						if (literalFrequencies.get(literal) > maxFrequency) {
+							maxFrequency = literalFrequencies.get(literal);
+							chosenLiteral = literal;
+						}
+					}
+				}
+			}
+		}
+		System.out.println("chosen literal: " + chosenLiteral);
+		return chosenLiteral;
+	}
 
 
 
