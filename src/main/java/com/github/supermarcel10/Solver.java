@@ -23,7 +23,8 @@ import java.util.stream.IntStream;
 
 
 public class Solver {
-	private int[][] clauseDatabase = null;
+	private int[][] clauseDatabase;
+	private int[][] originalDatabase;
 	private int[] assignment = null;
 
 	private boolean assignmentChanged = true;
@@ -124,6 +125,7 @@ public class Solver {
 	public int[] checkSat(int[][] clauseDatabase) {
 		assignment = new int[numberOfVariables + 1];
 		this.clauseDatabase = clauseDatabase;
+		this.originalDatabase = clauseDatabase;
 
 		return startSat();
 	}
@@ -131,23 +133,31 @@ public class Solver {
 	public int[] startSat() {
 		// TODO: Possibly remove last run since it's the same.
 		while (assignmentChanged) {
+			System.out.println(Arrays.toString(assignment));
+			System.out.println(Arrays.deepToString(clauseDatabase));
+
 			optimiseClauses();
+
+			System.out.println(Arrays.toString(assignment));
+			System.out.println(Arrays.deepToString(clauseDatabase));
+
 			removeKnownClauses();
+
+			System.out.println(Arrays.toString(assignment));
+			System.out.println(Arrays.deepToString(clauseDatabase));
 		}
 
 		System.out.println(Arrays.toString(assignment));
 		System.out.println(Arrays.deepToString(clauseDatabase));
 
 		// TODO: DPLL or CDCL
-		decisionLevel = new int[assignment.length];
-		CDCL();
+//		decisionLevel = new int[assignment.length];
+//		CDCL();
 //		if (clauseDatabase.length == 1) {
 //			assignment[Math.abs(clauseDatabase[0][0])] = clauseDatabase[0][0] / Math.abs(clauseDatabase[0][0]);
 //		}
 
-//		if (clauseDatabase.length == 0) {
-//			return assignment;
-//		} else if (checkUnsat()) return null;
+		if (checkUnsat()) return null;
 
 		// Default all unassigned variables to 1.
 //		IntStream.range(1, assignment.length)
@@ -159,6 +169,8 @@ public class Solver {
 
 		System.out.println(Arrays.toString(assignment));
 		System.out.println(Arrays.deepToString(clauseDatabase));
+
+		clauseDatabase = originalDatabase; originalDatabase = null;
 
 		return assignment;
 	}
@@ -184,7 +196,7 @@ public class Solver {
 				.filter(clause -> !clause.isEmpty())
 				.collect(Collectors.toSet());
 
-
+		// TODO: CHEK IF THE INVERSE EXISTS AND RETURN UNSAT!
 		// Step 5: Collect unit clauses and assign values
 		List<Integer> unitClauses = distinctSortedClauses.stream()
 				.filter(clause -> clause.size() == 1)
@@ -272,18 +284,22 @@ public class Solver {
 					assignment = null;
 					return;
 				}
+
 				int[] learnedClause = analyzeConflict();
 				int backtrackLevel = computeBacktrackLevel(learnedClause);
+
 				backtrack(backtrackLevel);
+
 				clauseDatabase = Arrays.copyOf(clauseDatabase, clauseDatabase.length + 1);
 				clauseDatabase[clauseDatabase.length - 1] = learnedClause;
+
 				conflict = false;
 			} else if (assignmentStack.size() == assignment.length) {
 				return;
 			} else {
 				int literal = chooseLiteral();
 				if (literal == 0) return;
-				int currentDecisionLevel = decisionLevels.get(Math.abs(literal) - 1);
+				int currentDecisionLevel = decisionLevels.get(Math.abs(literal));
 				decisionLevels.set(Math.abs(literal), currentDecisionLevel + 1);
 				propagate(literal);
 			}
@@ -338,12 +354,12 @@ public class Solver {
 				}
 			}
 
-			System.out.println("clause: " + Arrays.toString(clause));
-			System.out.println("unassignedCount: " + unassignedCount);
-			System.out.println("unassignedLiteral: " + unassignedLiteral);
-			System.out.println("satisfied: " + satisfied);
+//			System.out.println("clause: " + Arrays.toString(clause));
+//			System.out.println("unassignedCount: " + unassignedCount);
+//			System.out.println("unassignedLiteral: " + unassignedLiteral);
+//			System.out.println("satisfied: " + satisfied);
 
-			if (!satisfied && unassignedCount == 1) {
+			if (!satisfied && unassignedCount >= 1) {
 				int varIndex = Math.abs(unassignedLiteral);
 				System.out.println("propagating " + ((unassignedLiteral > 0) ? "" : "-") + varIndex + " to " + ((literal > 0) ? "true" : "false"));
 				assignment[varIndex] = Integer.signum(literal);
