@@ -132,46 +132,36 @@ public class Solver {
 
 	public int[] startSat() {
 		// TODO: Possibly remove last run since it's the same.
-		while (assignmentChanged) {
-			System.out.println(Arrays.toString(assignment));
-			System.out.println(Arrays.deepToString(clauseDatabase));
+		while (assignmentChanged && clauseDatabase.length > 0 && assignment != null) optimiseClauses();
 
-			optimiseClauses();
+		System.out.println(Arrays.toString(assignment));
+		System.out.println(Arrays.deepToString(clauseDatabase));
 
-			System.out.println(Arrays.toString(assignment));
-			System.out.println(Arrays.deepToString(clauseDatabase));
-
-			removeKnownClauses();
-
-			System.out.println(Arrays.toString(assignment));
-			System.out.println(Arrays.deepToString(clauseDatabase));
+		if (!checkUnsat() && assignment != null) {
+			decisionLevel = new int[assignment.length];
+			CDCL();
 		}
 
-		System.out.println(Arrays.toString(assignment));
-		System.out.println(Arrays.deepToString(clauseDatabase));
+		if (clauseDatabase.length == 1) {
+			assert assignment != null;
+			assignment[Math.abs(clauseDatabase[0][0])] = clauseDatabase[0][0] / Math.abs(clauseDatabase[0][0]);
+		}
 
-		// TODO: DPLL or CDCL
-//		decisionLevel = new int[assignment.length];
-//		CDCL();
-//		if (clauseDatabase.length == 1) {
-//			assignment[Math.abs(clauseDatabase[0][0])] = clauseDatabase[0][0] / Math.abs(clauseDatabase[0][0]);
-//		}
-
-		if (checkUnsat()) return null;
+		if (assignment == null) return null;
 
 		// Default all unassigned variables to 1.
-//		IntStream.range(1, assignment.length)
-//				.forEach(i -> {
-//					if (assignment[i] == 0) {
-//						assignment[i] = 1;
-//					}
-//				});
+		IntStream.range(1, assignment.length)
+				.forEach(i -> {
+					if (assignment[i] == 0) {
+						assignment[i] = 1;
+					}
+				});
 
 		System.out.println(Arrays.toString(assignment));
 		System.out.println(Arrays.deepToString(clauseDatabase));
 
+		// Return the assignment
 		clauseDatabase = originalDatabase; originalDatabase = null;
-
 		return assignment;
 	}
 
@@ -182,8 +172,13 @@ public class Solver {
 	4. Remove clauses containing both a literal and its negation
 	5. Collect unit clauses and assign values
 	6. Remove clauses with assigned literals
+	7. Remove clauses that are satisfied by the assignment
 	 */
 	public void optimiseClauses() {
+		System.out.println(Arrays.toString(assignment));
+		System.out.println(Arrays.deepToString(clauseDatabase));
+		ArrayList<Integer> test = new ArrayList<>();
+
 		// Step 1, 2, 3, and 4: Remove duplicates within each clause, sort literals, remove duplicate clauses, and remove literals and their negations within each clause
 		Set<List<Integer>> distinctSortedClauses = Arrays.stream(clauseDatabase)
 				.map(clause -> Arrays.stream(clause)
@@ -196,7 +191,12 @@ public class Solver {
 				.filter(clause -> !clause.isEmpty())
 				.collect(Collectors.toSet());
 
-		// TODO: CHEK IF THE INVERSE EXISTS AND RETURN UNSAT!
+		if (hasConflictingUnitClauses()) {
+			assignmentChanged = false;
+			assignment = null;
+			return;
+		}
+
 		// Step 5: Collect unit clauses and assign values
 		List<Integer> unitClauses = distinctSortedClauses.stream()
 				.filter(clause -> clause.size() == 1)
@@ -217,6 +217,31 @@ public class Solver {
 		clauseDatabase = distinctSortedClauses.stream()
 				.map(clause -> clause.stream().mapToInt(Integer::intValue).toArray())
 				.toArray(int[][]::new);
+
+		System.out.println(Arrays.toString(assignment));
+		System.out.println(Arrays.deepToString(clauseDatabase));
+
+		System.exit(0);
+
+		// Step 7: Remove clauses that are satisfied by the assignment
+		removeKnownClauses();
+	}
+
+	private boolean hasConflictingUnitClauses() {
+		Set<Integer> unitLiterals = new HashSet<>();
+
+		for (int[] clause : clauseDatabase) {
+			if (clause.length == 1) {
+				int literal = clause[0];
+				if (unitLiterals.contains(-literal)) {
+					System.out.printf("Found conflicting unit clauses: %d and %d%n", literal, -literal);
+					return true;
+				}
+				unitLiterals.add(literal);
+			}
+		}
+
+		return false;
 	}
 
 	public void removeKnownClauses() {
@@ -281,7 +306,7 @@ public class Solver {
 		while (true) {
 			if (conflict) {
 				if (decisionLevels.get(Math.abs(assignmentStack.peek())) == 0) {
-					assignment = null;
+					assignment =  null;
 					return;
 				}
 
@@ -295,16 +320,28 @@ public class Solver {
 
 				conflict = false;
 			} else if (assignmentStack.size() == assignment.length) {
+				int[] finalAssignment = new int[assignment.length];
+				for (int i = 1; i < assignment.length; i++) {
+					finalAssignment[i - 1] = assignment[i];
+				}
+
+				assignment = finalAssignment;
 				return;
 			} else {
 				int literal = chooseLiteral();
-				if (literal == 0) return;
+
+				if (literal == 0) {
+					assignment = null;
+					return;
+				}
+
 				int currentDecisionLevel = decisionLevels.get(Math.abs(literal));
 				decisionLevels.set(Math.abs(literal), currentDecisionLevel + 1);
 				propagate(literal);
 			}
 		}
 	}
+
 
 //	private void propagate(int literal) {
 //		assignmentStack.push(literal);
