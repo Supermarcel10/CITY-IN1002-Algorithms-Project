@@ -7,7 +7,9 @@ import java.util.stream.Collectors;
 // I think this can solve ????
 public class PartB {
 	public static int[] checkSat(int[][] clauses) {
-		return DPLL(clauses);
+		int[] result = DPLL(clauses);
+		System.out.println(Arrays.toString(result));
+		return result;
 	}
 
 	private static int[] DPLL(int[][] clauses) {
@@ -33,6 +35,28 @@ public class PartB {
 
 		while (!stack.empty()) {
 			model = stack.pop();
+
+			// Unit Propagation
+			Map<Integer, Boolean> unitModel = new HashMap<>(model);
+			boolean unitPropagation = true;
+			while (unitPropagation) {
+				unitPropagation = false;
+				for (List<Integer> clause : clauseList) {
+					if (clause.stream().anyMatch(l -> unitModel.containsKey(Math.abs(l)) && ((l > 0) == unitModel.get(Math.abs(l))))) {
+						continue;
+					}
+					List<Integer> unassignedLiterals = clause.stream().filter(l -> !unitModel.containsKey(Math.abs(l))).collect(Collectors.toList());
+					if (unassignedLiterals.size() == 1) {
+						int unitLiteral = unassignedLiterals.get(0);
+						unitModel.put(Math.abs(unitLiteral), unitLiteral > 0);
+						unitPropagation = true;
+						break;
+					}
+				}
+			}
+
+			model = unitModel;
+
 			if (model.size() == symbols.size()) {
 				Map<Integer, Boolean> finalModel = model;
 				if (clauseList.stream().allMatch(c -> c.stream().anyMatch(l -> finalModel.containsKey(Math.abs(l)) && ((l > 0) == finalModel.get(Math.abs(l)))))) {
@@ -45,63 +69,21 @@ public class PartB {
 				}
 			} else {
 				int symbol = 0;
-				boolean pureLiteralFound = false;
-
-				// Pure Literal Elimination
-				Map<Integer, Boolean> finalModel1 = model;
-				Map<Integer, Long> literalCounts = clauseList.stream()
-						.filter(c -> c.stream().noneMatch(l -> finalModel1.containsKey(Math.abs(l)) && ((l > 0) != finalModel1.get(Math.abs(l)))))
-						.flatMap(List::stream)
-						.collect(Collectors.groupingBy(l -> l, Collectors.counting()));
-
 				for (int s : symbols) {
-					if (!model.containsKey(s)) {
-						Long countPositive = literalCounts.getOrDefault(s, 0L);
-						Long countNegative = literalCounts.getOrDefault(-s, 0L);
-
-						if (countPositive > 0 && countNegative == 0) {
-							symbol = s;
-							pureLiteralFound = true;
-							break;
-						} else if (countPositive == 0 && countNegative > 0) {
-							symbol = -s;
-							pureLiteralFound = true;
-							break;
-						}
+					if (!model.containsKey(s) && clauseList.stream().anyMatch(c -> c.contains(s) || c.contains(-s))) {
+						symbol = s;
+						break;
 					}
 				}
 
-				if (pureLiteralFound) {
-					Map<Integer, Boolean> pureModel = new HashMap<>(model);
-					pureModel.put(Math.abs(symbol), symbol > 0);
-					stack.push(pureModel);
-					assignment[Math.abs(symbol)] = symbol > 0 ? 1 : -1;
-				} else {
-					for (int s : symbols) {
-						if (!model.containsKey(s)) {
-							symbol = s;
-							break;
-						}
-					}
+				if (symbol != 0) {
+					Map<Integer, Boolean> trueModel = new HashMap<>(model);
+					trueModel.put(symbol, true);
+					stack.push(trueModel);
 
-					if (symbol != 0) { // if symbol is found
-						Map<Integer, Boolean> trueModel = new HashMap<>(model);
-						trueModel.put(symbol, true);
-						if (clauseList.stream().noneMatch(c -> c.stream().allMatch(l -> trueModel.containsKey(Math.abs(l)) && ((l > 0) != trueModel.get(Math.abs(l)))))) {
-							stack.push(trueModel);
-							assignment[symbol] = 1; // update assignment array for true value
-						}
-
-						Map<Integer, Boolean> falseModel = new HashMap<>(model);
-						falseModel.put(symbol, false);
-						if (clauseList.stream().noneMatch(c -> c.stream().allMatch(l -> falseModel.containsKey(Math.abs(l)) && ((l > 0) != falseModel.get(Math.abs(l)))))) {
-							stack.push(falseModel);
-							assignment[symbol] = -1; // update assignment array for false value
-						}
-					} else { // if symbol is not found, set to 0
-						assignment[symbols.size()] = 0;
-						return assignment;
-					}
+					Map<Integer, Boolean> falseModel = new HashMap<>(model);
+					falseModel.put(symbol, false);
+					stack.push(falseModel);
 				}
 			}
 		}
