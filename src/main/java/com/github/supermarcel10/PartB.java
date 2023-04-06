@@ -5,9 +5,6 @@ import java.util.stream.Collectors;
 
 // Part B
 // I think this can solve ????
-import java.util.*;
-import java.util.stream.Collectors;
-
 public class PartB {
 	public static int[] checkSat(int[][] clauses) {
 		return DPLL(clauses);
@@ -53,7 +50,7 @@ public class PartB {
 				// Pure Literal Elimination
 				Map<Integer, Boolean> finalModel1 = model;
 				Map<Integer, Long> literalCounts = clauseList.stream()
-						.filter(c -> !c.stream().anyMatch(l -> finalModel1.containsKey(Math.abs(l)) && ((l > 0) != finalModel1.get(Math.abs(l)))))
+						.filter(c -> c.stream().noneMatch(l -> finalModel1.containsKey(Math.abs(l)) && ((l > 0) != finalModel1.get(Math.abs(l)))))
 						.flatMap(List::stream)
 						.collect(Collectors.groupingBy(l -> l, Collectors.counting()));
 
