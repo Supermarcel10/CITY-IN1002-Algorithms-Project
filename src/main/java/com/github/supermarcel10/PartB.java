@@ -3,25 +3,12 @@ package com.github.supermarcel10;
 import java.util.*;
 import java.util.stream.Collectors;
 
+// Part B
+// I think this can solve ????
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class PartB {
-	// TODO: Remove this afterwards
-	public static void main(String[] args) {
-		int[][] clauses = {
-				{-1, 2, -4},
-				{-4, -3, 4},
-				{-3, -1, 2},
-				{3, 4, -1},
-				{1, -4, -2},
-				{4, -1, -4}
-		};
-
-		int[] result = DPLL(clauses);
-		System.out.println(Arrays.toString(result));
-	}
-
-	// Part B
-	// I think this can solve ????
 	public static int[] checkSat(int[][] clauses) {
 		return DPLL(clauses);
 	}
@@ -44,7 +31,7 @@ public class PartB {
 		Map<Integer, Boolean> model = new HashMap<>();
 		stack.push(model);
 
-		int[] assignment = new int[symbols.size()+1]; // initialize assignment array
+		int[] assignment = new int[symbols.size() + 1]; // initialize assignment array
 		Arrays.fill(assignment, 0);
 
 		while (!stack.empty()) {
@@ -61,30 +48,63 @@ public class PartB {
 				}
 			} else {
 				int symbol = 0;
+				boolean pureLiteralFound = false;
+
+				// Pure Literal Elimination
+				Map<Integer, Boolean> finalModel1 = model;
+				Map<Integer, Long> literalCounts = clauseList.stream()
+						.filter(c -> !c.stream().anyMatch(l -> finalModel1.containsKey(Math.abs(l)) && ((l > 0) != finalModel1.get(Math.abs(l)))))
+						.flatMap(List::stream)
+						.collect(Collectors.groupingBy(l -> l, Collectors.counting()));
+
 				for (int s : symbols) {
 					if (!model.containsKey(s)) {
-						symbol = s;
-						break;
+						Long countPositive = literalCounts.getOrDefault(s, 0L);
+						Long countNegative = literalCounts.getOrDefault(-s, 0L);
+
+						if (countPositive > 0 && countNegative == 0) {
+							symbol = s;
+							pureLiteralFound = true;
+							break;
+						} else if (countPositive == 0 && countNegative > 0) {
+							symbol = -s;
+							pureLiteralFound = true;
+							break;
+						}
 					}
 				}
 
-				if (symbol != 0) { // if symbol is found
-					Map<Integer, Boolean> trueModel = new HashMap<>(model);
-					trueModel.put(symbol, true);
-					if (clauseList.stream().noneMatch(c -> c.stream().allMatch(l -> trueModel.containsKey(Math.abs(l)) && ((l > 0) != trueModel.get(Math.abs(l)))))) {
-						stack.push(trueModel);
-						assignment[symbol] = 1; // update assignment array for true value
+				if (pureLiteralFound) {
+					Map<Integer, Boolean> pureModel = new HashMap<>(model);
+					pureModel.put(Math.abs(symbol), symbol > 0);
+					stack.push(pureModel);
+					assignment[Math.abs(symbol)] = symbol > 0 ? 1 : -1;
+				} else {
+					for (int s : symbols) {
+						if (!model.containsKey(s)) {
+							symbol = s;
+							break;
+						}
 					}
 
-					Map<Integer, Boolean> falseModel = new HashMap<>(model);
-					falseModel.put(symbol, false);
-					if (clauseList.stream().noneMatch(c -> c.stream().allMatch(l -> falseModel.containsKey(Math.abs(l)) && ((l > 0) != falseModel.get(Math.abs(l)))))) {
-						stack.push(falseModel);
-						assignment[symbol] = -1; // update assignment array for false value
+					if (symbol != 0) { // if symbol is found
+						Map<Integer, Boolean> trueModel = new HashMap<>(model);
+						trueModel.put(symbol, true);
+						if (clauseList.stream().noneMatch(c -> c.stream().allMatch(l -> trueModel.containsKey(Math.abs(l)) && ((l > 0) != trueModel.get(Math.abs(l)))))) {
+							stack.push(trueModel);
+							assignment[symbol] = 1; // update assignment array for true value
+						}
+
+						Map<Integer, Boolean> falseModel = new HashMap<>(model);
+						falseModel.put(symbol, false);
+						if (clauseList.stream().noneMatch(c -> c.stream().allMatch(l -> falseModel.containsKey(Math.abs(l)) && ((l > 0) != falseModel.get(Math.abs(l)))))) {
+							stack.push(falseModel);
+							assignment[symbol] = -1; // update assignment array for false value
+						}
+					} else { // if symbol is not found, set to 0
+						assignment[symbols.size()] = 0;
+						return assignment;
 					}
-				} else { // if symbol is not found, set to 0
-					assignment[symbols.size()] = 0;
-					return assignment;
 				}
 			}
 		}
