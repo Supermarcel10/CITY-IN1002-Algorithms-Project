@@ -57,33 +57,59 @@ public class PartB {
 
 			model = unitModel;
 
-			if (model.size() == symbols.size()) {
-				Map<Integer, Boolean> finalModel = model;
-				if (clauseList.stream().allMatch(c -> c.stream().anyMatch(l -> finalModel.containsKey(Math.abs(l)) && ((l > 0) == finalModel.get(Math.abs(l)))))) {
-					// update assignment array for true values in final model
-					finalModel.forEach((k, v) -> {
-						int index = (k > 0) ? k : -k;
-						assignment[index] = v ? 1 : -1;
-					});
-					return assignment;
-				}
-			} else {
-				int symbol = 0;
-				for (int s : symbols) {
-					if (!model.containsKey(s) && clauseList.stream().anyMatch(c -> c.contains(s) || c.contains(-s))) {
-						symbol = s;
-						break;
+			// Pure Literal Elimination
+			boolean pureLiteralFound = false;
+			Map<Integer, Boolean> pureModel = new HashMap<>(model);
+			for (int s : symbols) {
+				if (!pureModel.containsKey(s)) {
+					boolean positive = false;
+					boolean negative = false;
+					for (List<Integer> clause : clauseList) {
+						if (clause.contains(s)) positive = true;
+						if (clause.contains(-s)) negative = true;
+						if (positive && negative) break;
+					}
+					if (positive != negative) {
+						pureModel.put(s, positive);
+						pureLiteralFound = true;
 					}
 				}
+			}
 
-				if (symbol != 0) {
-					Map<Integer, Boolean> trueModel = new HashMap<>(model);
-					trueModel.put(symbol, true);
-					stack.push(trueModel);
+			if (pureLiteralFound) {
+				stack.push(pureModel);
+			} else {
+				if (model.size() == symbols.size()) {
+					Map<Integer, Boolean> finalModel = model;
+					if (clauseList.stream().allMatch(c -> c.stream().anyMatch(l -> finalModel.containsKey(Math.abs(l)) && ((l > 0) == finalModel.get(Math.abs(l)))))) {
+						// update assignment array for true values in final model
+						finalModel.forEach((k, v) -> {
+							int index = (k > 0) ? k : -k;
+							assignment[index] = v ? 1 : -1;
+						});
+						return assignment;
+					}
+				} else {
+					int symbol = 0;
+					for (int s : symbols) {
+						if (!model.containsKey(s) && clauseList.stream().anyMatch(c -> c.contains(s) || c.contains(-s))) {
+							symbol = s;
+							break;
+						}
+					}
 
-					Map<Integer, Boolean> falseModel = new HashMap<>(model);
-					falseModel.put(symbol, false);
-					stack.push(falseModel);
+					if (symbol != 0) {
+						Map<Integer, Boolean> trueModel = new HashMap<>(model);
+						trueModel.put(symbol, true);
+						stack.push(trueModel);
+
+						Map<Integer,Boolean> falseModel = new HashMap<>(model);
+						falseModel.put(symbol, false);
+						stack.push(falseModel);
+					} else {
+						assignment[symbols.size()] = 0;
+						return assignment;
+					}
 				}
 			}
 		}
