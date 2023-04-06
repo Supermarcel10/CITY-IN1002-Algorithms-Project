@@ -20,19 +20,12 @@ import java.nio.file.Paths;
 import java.util.*;
 
 import static com.github.supermarcel10.PartA.*;
-
+import static com.github.supermarcel10.PartB.*;
 
 public class Solver {
 	private int[][] clauseDatabase;
 	private int numberOfVariables = 0;
 	static long startTime, endTime;
-
-	// Part B
-	// I think this can solve ????
-	public int[] checkSat(int[][] clauseDatabase) {
-
-		return null;
-	}
 
 	/*****************************************************************\
 	 *** DO NOT CHANGE! DO NOT CHANGE! DO NOT CHANGE! DO NOT CHANGE! ***
