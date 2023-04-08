@@ -3,8 +3,25 @@ package com.github.supermarcel10;
 import java.util.*;
 import java.util.stream.Collectors;
 
-// Part B
-// I think this can solve ????
+/**
+ * 1: 13ms
+ * 2: 8ms
+ * 3: 9ms
+ * 4: 17ms
+ * 5: 21ms
+ * 6: 51ms
+ * 7: 77ms
+ * 8: 53ms
+ * 9: 744ms
+ * 10: 1473ms
+ * 11: 11646ms
+ * 12: 4232ms
+ * 13: NDF
+ * 14: NDF
+ * 15: NDF
+ */
+
+// TODO: 13, 14, 15
 public class PartB {
 	public static int[] checkSat(int[][] clauses) {
 		int[] result = DPLL(clauses);
