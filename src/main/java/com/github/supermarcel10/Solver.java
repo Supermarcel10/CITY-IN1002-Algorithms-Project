@@ -131,23 +131,18 @@ public class Solver {
 	}
 
 	public int[] startSat() {
-		// TODO: Possibly remove last run since it's the same.
-		while (assignmentChanged && clauseDatabase.length > 0 && assignment != null) optimiseClauses();
-
-		System.out.println(Arrays.toString(assignment));
-		System.out.println(Arrays.deepToString(clauseDatabase));
+		while (assignmentChanged || clauseDatabase.length == 0 || assignment == null) optimiseClauses();
 
 		if (!checkUnsat() && assignment != null) {
 			decisionLevel = new int[assignment.length];
 			CDCL();
 		}
 
+		if (assignment == null) return null;
+
 		if (clauseDatabase.length == 1) {
-			assert assignment != null;
 			assignment[Math.abs(clauseDatabase[0][0])] = clauseDatabase[0][0] / Math.abs(clauseDatabase[0][0]);
 		}
-
-		if (assignment == null) return null;
 
 		// Default all unassigned variables to 1.
 		IntStream.range(1, assignment.length)
@@ -169,49 +164,33 @@ public class Solver {
 	1. Remove duplicates within each clause
 	2. Sort literals in each clause
 	3. Remove duplicate clauses
-	4. Remove clauses containing both a literal and its negation
-	5. Collect unit clauses and assign values
-	6. Remove clauses with assigned literals
-	7. Remove clauses that are satisfied by the assignment
+	4. Remove clauses with assigned literals
+	5. Remove clauses that are satisfied by the assignment
 	 */
 	public void optimiseClauses() {
 		System.out.println(Arrays.toString(assignment));
 		System.out.println(Arrays.deepToString(clauseDatabase));
-		ArrayList<Integer> test = new ArrayList<>();
 
-		// Step 1, 2, 3, and 4: Remove duplicates within each clause, sort literals, remove duplicate clauses, and remove literals and their negations within each clause
+		// Steps 1, 2, and 3: Remove duplicates within each clause, sort literals, and remove duplicate clauses
 		Set<List<Integer>> distinctSortedClauses = Arrays.stream(clauseDatabase)
 				.map(clause -> Arrays.stream(clause)
 						.distinct()
+						.sorted()
 						.boxed()
-						.collect(Collectors.groupingBy(Math::abs, Collectors.summingInt(Integer::intValue))))
-				.map(literalSumMap -> literalSumMap.values().stream()
-						.filter(literalSum -> literalSum != 0)
 						.collect(Collectors.toList()))
-				.filter(clause -> !clause.isEmpty())
 				.collect(Collectors.toSet());
 
-		if (hasConflictingUnitClauses()) {
-			assignmentChanged = false;
-			assignment = null;
-			return;
-		}
-
-		// Step 5: Collect unit clauses and assign values
-		List<Integer> unitClauses = distinctSortedClauses.stream()
+		// Step 4: Remove clauses with assigned literals
+		Set<Integer> assignedLiterals = distinctSortedClauses.stream()
 				.filter(clause -> clause.size() == 1)
 				.map(clause -> clause.get(0))
-				.toList();
+				.collect(Collectors.toSet());
 
-		assignmentChanged = false;
-		for (int unitClause : unitClauses) {
-			assignmentChanged = true;
-			assignment[Math.abs(unitClause)] = unitClause / Math.abs(unitClause);
-		}
-
-		// Step 6: Remove clauses with assigned literals
-		Set<Integer> assignedLiterals = new HashSet<>(unitClauses);
+		// Remove clauses with assigned literals
 		distinctSortedClauses.removeIf(clause -> clause.size() == 1 && assignedLiterals.contains(clause.get(0)));
+
+		// Set the assignment for the assigned literals
+		assignedLiterals.forEach(literal -> assignment[Math.abs(literal)] = literal / Math.abs(literal));
 
 		// Convert the set of distinctSortedClauses back to the int[][] format for clauseDatabase
 		clauseDatabase = distinctSortedClauses.stream()
@@ -221,10 +200,13 @@ public class Solver {
 		System.out.println(Arrays.toString(assignment));
 		System.out.println(Arrays.deepToString(clauseDatabase));
 
-		System.exit(0);
-
-		// Step 7: Remove clauses that are satisfied by the assignment
+		// Step 5: Remove clauses that are satisfied by the assignment
 		removeKnownClauses();
+		System.out.println(clauseDatabase.length);
+
+		if (!hasConflictingUnitClauses()) {
+			assignmentChanged = false;
+		}
 	}
 
 	private boolean hasConflictingUnitClauses() {
@@ -256,15 +238,21 @@ public class Solver {
 				.collect(Collectors.toSet());
 
 		// Filter out clauses containing any literals specified in nonZeroAssignments
-		clauseDatabase = Arrays.stream(clauseDatabase)
-				.filter(clause -> Arrays.stream(clause).noneMatch(nonZeroAssignments::contains))
-				.toArray(int[][]::new);
+		for (int assignedLiteral : nonZeroAssignments) {
+			// Remove the assigned literal and its negation from all clauses
+			for (int i = 0; i < clauseDatabase.length; i++) {
+				if (Arrays.binarySearch(clauseDatabase[i], assignedLiteral) >= 0) {
+					// Remove the assigned literal and its negation from the clause
+					clauseDatabase[i] = Arrays.stream(clauseDatabase[i])
+							.filter(literal -> literal != assignedLiteral && literal != -assignedLiteral)
+							.toArray();
+				}
 
-		// Remove inverse literals from the remaining clauses
-		for (int i = 0; i < clauseDatabase.length; i++) {
-			clauseDatabase[i] = Arrays.stream(clauseDatabase[i])
-					.filter(literal -> !inverseLiterals.contains(literal))
-					.toArray();
+				// Remove inverse literals from the remaining clauses
+				clauseDatabase[i] = Arrays.stream(clauseDatabase[i])
+						.filter(literal -> !inverseLiterals.contains(literal))
+						.toArray();
+			}
 		}
 	}
 
@@ -305,8 +293,9 @@ public class Solver {
 
 		while (true) {
 			if (conflict) {
+				System.out.println(Arrays.toString(assignment));
 				if (decisionLevels.get(Math.abs(assignmentStack.peek())) == 0) {
-					assignment =  null;
+					assignment = null;
 					return;
 				}
 
@@ -321,9 +310,8 @@ public class Solver {
 				conflict = false;
 			} else if (assignmentStack.size() == assignment.length) {
 				int[] finalAssignment = new int[assignment.length];
-				for (int i = 1; i < assignment.length; i++) {
-					finalAssignment[i - 1] = assignment[i];
-				}
+				if (assignment.length - 1 >= 0)
+					System.arraycopy(assignment, 1, finalAssignment, 0, assignment.length - 1);
 
 				assignment = finalAssignment;
 				return;
