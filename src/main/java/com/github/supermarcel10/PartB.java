@@ -53,7 +53,7 @@ public class PartB {
 
 		stack.push(model);
 
-		int[] assignment = new int[symbols.size() + 1]; // initialize assignment array
+		int[] assignment = new int[Solver.numberOfVariables + 1];
 		Arrays.fill(assignment, 0);
 
 		while (!stack.empty()) {
