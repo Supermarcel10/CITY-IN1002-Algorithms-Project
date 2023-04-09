@@ -3,13 +3,27 @@ package com.github.supermarcel10;
 import java.util.*;
 import java.util.stream.Collectors;
 
-// Part B
-// I think this can solve ????
+
+/*
+ * 1:
+ * 2:
+ * 3:
+ * 4:
+ * 5:
+ * 6:
+ * 7:
+ * 8:
+ * 9:
+ * 10:
+ * 11:
+ * 12:
+ * 13:
+ * 14:
+ * 15:
+ */
 public class PartB {
 	public static int[] checkSat(int[][] clauses) {
-		int[] result = DPLL(clauses, new HashMap<>());
-		System.out.println(Arrays.toString(result));
-		return result;
+		return DPLL(clauses, new HashMap<>());
 	}
 
 	private static int[] DPLL(int[][] clauses, Map<Integer, Integer> symbolOccurrences) {
@@ -21,7 +35,7 @@ public class PartB {
 
 		Set<Integer> symbols = new HashSet<>();
 
-		// Check if the symbolOccurrences map already contains the symbol occurrences
+		// Check if the symbolOccurrences is already cached.
 		boolean useCachedSymbolOccurrences = true;
 		for (List<Integer> clause : clauseList) {
 			for (int literal : clause) {
@@ -37,7 +51,7 @@ public class PartB {
 			}
 		}
 
-		// If the symbolOccurrences map doesn't contain the occurrences of each symbol, calculate them
+		// If not cached, then calculate them
 		for (List<Integer> clause : clauseList) {
 			for (int literal : clause) {
 				int symbol = Math.abs(literal);
@@ -46,7 +60,33 @@ public class PartB {
 			}
 		}
 
-		twoClauseElimination(clauseList, symbolOccurrences);
+		// Two Clause Elimination
+		for (List<Integer> clause : clauseList) {
+			if (clause.size() == 2) {
+				int symbol1 = Math.abs(clause.get(0));
+				int symbol2 = Math.abs(clause.get(1));
+				int occurrences1 = symbolOccurrences.get(symbol1);
+				int occurrences2 = symbolOccurrences.get(symbol2);
+				if (occurrences1 < occurrences2) {
+					symbolOccurrences.put(symbol1, occurrences1 + 1);
+				} else {
+					symbolOccurrences.put(symbol2, occurrences2 + 1);
+				}
+			}
+		}
+
+		for (Iterator<List<Integer>> iterator = clauseList.iterator(); iterator.hasNext(); ) {
+			List<Integer> clause = iterator.next();
+			if (clause.size() == 2) {
+				int symbol1 = Math.abs(clause.get(0));
+				int symbol2 = Math.abs(clause.get(1));
+				int occurrences1 = symbolOccurrences.get(symbol1);
+				int occurrences2 = symbolOccurrences.get(symbol2);
+				if (occurrences1 == 1 || occurrences2 == 1) {
+					iterator.remove();
+				}
+			}
+		}
 
 		Stack<Map<Integer, Boolean>> stack = new Stack<>();
 		Map<Integer, Boolean> model = new HashMap<>();
@@ -140,35 +180,6 @@ public class PartB {
 		}
 
 		return null; // UNSAT
-	}
-
-	private static void twoClauseElimination(List<List<Integer>> clauseList, Map<Integer, Integer> symbolOccurrences) {
-		for (List<Integer> clause : clauseList) {
-			if (clause.size() == 2) {
-				int symbol1 = Math.abs(clause.get(0));
-				int symbol2 = Math.abs(clause.get(1));
-				int occurrences1 = symbolOccurrences.get(symbol1);
-				int occurrences2 = symbolOccurrences.get(symbol2);
-				if (occurrences1 < occurrences2) {
-					symbolOccurrences.put(symbol1, occurrences1 + 1);
-				} else {
-					symbolOccurrences.put(symbol2, occurrences2 + 1);
-				}
-			}
-		}
-
-		for (Iterator<List<Integer>> iterator = clauseList.iterator(); iterator.hasNext(); ) {
-			List<Integer> clause = iterator.next();
-			if (clause.size() == 2) {
-				int symbol1 = Math.abs(clause.get(0));
-				int symbol2 = Math.abs(clause.get(1));
-				int occurrences1 = symbolOccurrences.get(symbol1);
-				int occurrences2 = symbolOccurrences.get(symbol2);
-				if (occurrences1 == 1 || occurrences2 == 1) {
-					iterator.remove();
-				}
-			}
-		}
 	}
 
 	private static boolean isClauseSatisfied(List<Integer> clause, Map<Integer, Boolean> model) {
