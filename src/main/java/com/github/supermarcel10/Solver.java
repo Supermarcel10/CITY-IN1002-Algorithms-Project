@@ -24,7 +24,7 @@ import static com.github.supermarcel10.PartB.*;
 
 public class Solver {
 	private int[][] clauseDatabase;
-	private int numberOfVariables = 0;
+	public static int numberOfVariables = 0;
 	static long startTime, endTime;
 
 	/*****************************************************************\
