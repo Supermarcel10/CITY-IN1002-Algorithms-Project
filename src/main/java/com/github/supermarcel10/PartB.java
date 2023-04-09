@@ -7,14 +7,12 @@ import java.util.stream.Collectors;
 // I think this can solve ????
 public class PartB {
 	public static int[] checkSat(int[][] clauses) {
-		int[] result = DPLL(clauses);
+		int[] result = DPLL(clauses, new HashMap<>());
 		System.out.println(Arrays.toString(result));
 		return result;
 	}
 
-	private static int[] DPLL(int[][] clauses) {
-		List<Map<Integer, Boolean>> decisionModels = new ArrayList<>();
-
+	private static int[] DPLL(int[][] clauses, Map<Integer, Integer> symbolOccurrences) {
 		List<List<Integer>> clauseList = new ArrayList<>();
 		for (int[] clause : clauses) {
 			List<Integer> clauseAsList = Arrays.stream(clause).boxed().collect(Collectors.toList());
@@ -22,8 +20,24 @@ public class PartB {
 		}
 
 		Set<Integer> symbols = new HashSet<>();
-		Map<Integer, Integer> symbolOccurrences = new HashMap<>();
 
+		// Check if the symbolOccurrences map already contains the symbol occurrences
+		boolean useCachedSymbolOccurrences = true;
+		for (List<Integer> clause : clauseList) {
+			for (int literal : clause) {
+				int symbol = Math.abs(literal);
+				symbols.add(symbol);
+				if (!symbolOccurrences.containsKey(symbol)) {
+					useCachedSymbolOccurrences = false;
+					break;
+				}
+			}
+			if (!useCachedSymbolOccurrences) {
+				break;
+			}
+		}
+
+		// If the symbolOccurrences map doesn't contain the occurrences of each symbol, calculate them
 		for (List<Integer> clause : clauseList) {
 			for (int literal : clause) {
 				int symbol = Math.abs(literal);
@@ -38,7 +52,6 @@ public class PartB {
 		Map<Integer, Boolean> model = new HashMap<>();
 
 		stack.push(model);
-		decisionModels.add(new HashMap<>(model));
 
 		int[] assignment = new int[symbols.size() + 1]; // initialize assignment array
 		Arrays.fill(assignment, 0);
@@ -123,9 +136,6 @@ public class PartB {
 				Map<Integer, Boolean> newModelFalse = new HashMap<>(model);
 				newModelFalse.put(symbol, false);
 				stack.push(newModelFalse);
-
-				decisionModels.add(new HashMap<>(newModelTrue));
-				decisionModels.add(new HashMap<>(newModelFalse));
 			}
 		}
 
