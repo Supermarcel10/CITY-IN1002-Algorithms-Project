@@ -90,11 +90,9 @@ public class PartB {
 
 		Stack<Map<Integer, Boolean>> stack = new Stack<>();
 		Map<Integer, Boolean> model = new HashMap<>();
-
 		stack.push(model);
 
 		int[] assignment = new int[Solver.numberOfVariables + 1];
-		Arrays.fill(assignment, 0);
 
 		while (!stack.empty()) {
 			model = stack.pop();
