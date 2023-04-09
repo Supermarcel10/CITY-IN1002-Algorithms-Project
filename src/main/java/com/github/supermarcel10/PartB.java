@@ -112,7 +112,12 @@ public class PartB {
 
 			if (allSatisfied) {
 				for (int symbol : symbols) {
-					assignment[symbol] = (model.containsKey(symbol) && model.get(symbol)) ? symbol : -symbol;
+					Boolean value = model.get(symbol);
+					if (value != null && value) {
+						assignment[symbol] = 1;
+					} else {
+						assignment[symbol] = -1;
+					}
 				}
 				return assignment;
 			}
