@@ -12,10 +12,6 @@ public class PartB {
 		return result;
 	}
 
-//	private static void debug(String message) {
-//		System.out.println("DEBUG: " + message);
-//	}
-
 	private static int[] DPLL(int[][] clauses) {
 		List<Map<Integer, Boolean>> decisionModels = new ArrayList<>();
 
@@ -26,11 +22,17 @@ public class PartB {
 		}
 
 		Set<Integer> symbols = new HashSet<>();
+		Map<Integer, Integer> symbolOccurrences = new HashMap<>();
+
 		for (List<Integer> clause : clauseList) {
 			for (int literal : clause) {
+				int symbol = Math.abs(literal);
 				symbols.add(Math.abs(literal));
+				symbolOccurrences.put(symbol, symbolOccurrences.getOrDefault(symbol, 0) + 1);
 			}
 		}
+
+		twoClauseElimination(clauseList, symbolOccurrences);
 
 		Stack<Map<Integer, Boolean>> stack = new Stack<>();
 		Map<Integer, Boolean> model = new HashMap<>();
@@ -106,7 +108,7 @@ public class PartB {
 						assignment[symbol] = -1;
 					}
 				}
-				return assignment;
+				return assignment; // SAT
 			}
 
 			// If there is an unassigned symbol, branch on its value
@@ -128,6 +130,35 @@ public class PartB {
 		}
 
 		return null; // UNSAT
+	}
+
+	private static void twoClauseElimination(List<List<Integer>> clauseList, Map<Integer, Integer> symbolOccurrences) {
+		for (List<Integer> clause : clauseList) {
+			if (clause.size() == 2) {
+				int symbol1 = Math.abs(clause.get(0));
+				int symbol2 = Math.abs(clause.get(1));
+				int occurrences1 = symbolOccurrences.get(symbol1);
+				int occurrences2 = symbolOccurrences.get(symbol2);
+				if (occurrences1 < occurrences2) {
+					symbolOccurrences.put(symbol1, occurrences1 + 1);
+				} else {
+					symbolOccurrences.put(symbol2, occurrences2 + 1);
+				}
+			}
+		}
+
+		for (Iterator<List<Integer>> iterator = clauseList.iterator(); iterator.hasNext(); ) {
+			List<Integer> clause = iterator.next();
+			if (clause.size() == 2) {
+				int symbol1 = Math.abs(clause.get(0));
+				int symbol2 = Math.abs(clause.get(1));
+				int occurrences1 = symbolOccurrences.get(symbol1);
+				int occurrences2 = symbolOccurrences.get(symbol2);
+				if (occurrences1 == 1 || occurrences2 == 1) {
+					iterator.remove();
+				}
+			}
+		}
 	}
 
 	private static boolean isClauseSatisfied(List<Integer> clause, Map<Integer, Boolean> model) {
