@@ -22,10 +22,10 @@ import java.util.*;
 import static com.github.supermarcel10.PartA.*;
 import static com.github.supermarcel10.PartB.*;
 
+
 public class Solver {
 	private int[][] clauseDatabase;
 	public static int numberOfVariables = 0;
-	static long startTime, endTime;
 
 	/*****************************************************************\
 	 *** DO NOT CHANGE! DO NOT CHANGE! DO NOT CHANGE! DO NOT CHANGE! ***
@@ -47,13 +47,8 @@ public class Solver {
 
 			Path file = Paths.get(fileName);
 			BufferedReader reader = Files.newBufferedReader(file);
-
-			startTime = System.currentTimeMillis();
-
 			returnValue = mySolver.runSatSolver(reader);
 
-			endTime = System.currentTimeMillis();
-			System.out.println("Time taken: " + (endTime - startTime) + "ms");
 			return;
 
 		} catch (Exception e) {
@@ -195,5 +190,4 @@ public class Solver {
 		// All clauses loaded successfully!
 		return;
 	}
-
 }
