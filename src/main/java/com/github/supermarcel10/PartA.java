@@ -13,8 +13,7 @@ public class PartA {
 				}
 			}
 		} catch (ArrayIndexOutOfBoundsException e) {
-			System.out.println("Assignment is not long enough!");
-			return false;
+			throw new ArrayIndexOutOfBoundsException("Assignment is not long enough!");
 		}
 		return false;
 	}
@@ -30,8 +29,7 @@ public class PartA {
 				}
 			}
 		} catch (ArrayIndexOutOfBoundsException e) {
-			System.out.println("Assignment is not long enough!");
-			return false;
+			throw new ArrayIndexOutOfBoundsException("Assignment is not long enough!");
 		}
 		return true;
 	}
