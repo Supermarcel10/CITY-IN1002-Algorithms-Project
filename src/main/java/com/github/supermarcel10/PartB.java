@@ -5,21 +5,23 @@ import java.util.stream.Collectors;
 
 
 /*
- * 1:
- * 2:
- * 3:
- * 4:
- * 5:
- * 6:
- * 7:
- * 8:
- * 9:
- * 10:
- * 11:
- * 12:
- * 13:
- * 14:
- * 15:
+ * 1: 7ms
+ * 2: 5ms
+ * 3: 7ms
+ * 4: 10ms
+ * 5: 16ms
+ * 6: 33ms
+ * 7: 57ms
+ * 8: 51ms
+ * 9: 602ms
+ * 10: 1126ms
+ * 11: 9438ms
+ * 12: 3542ms
+ * 13: 23611ms
+ * 14: 62662ms
+ * 15: 100000ms+
+ *
+ * FILES 1 - 12 ARE SOLVABLE IN UNDER 15s OF TIME.
  */
 public class PartB {
 	public static int[] checkSat(int[][] clauses) {
