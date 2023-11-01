@@ -37,4 +37,4 @@ This project is nowhere near the best efficiency it could be, so feel free to im
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE.md file for details.
+This project is licensed under the [MIT Licence](https://github.com/Supermarcel10/JavaSATSolver/blob/master/LICENSE).
