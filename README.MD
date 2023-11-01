@@ -1,7 +1,39 @@
-## IN1002 Introduction to Algorithms (Coursework 2022/2023)
+# Java SAT Solver
 
-Submission by
-Marcel Barlik\
-marcel.barlik@city.ac.uk
+This repository is a SAT Solver implemented in Java, developed as a coursework project for City University's Algorithms module (IN1002).
 
-Compiled and tested with `JDK 20 2023-03-21` & `JDK 19`
+## Getting Started
+
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+
+### Prerequisites
+
+- Java JDK 19 or above (Prior versions may work, but have not been tested.
+
+### Installation
+
+<ol>
+<li>Clone the repository using `git clone https://github.com/Supermarcel10/JavaSATSolver.git`</li>
+<li>Navigate to the project directory:<br>
+`cd JavaSATSolver`</li>
+<li>Compile the Java files:<br>
+`javac *.java`</li>
+</ol>
+
+### Usage
+
+To run the SAT Solver, execute the following command:
+`java Main`
+
+## DPLL Algorithm
+
+This SAT Solver utilises the Davis–Putnam–Logemann–Loveland (DPLL) algorithm to determine the satisfiability of a propositional logic formula.
+
+## Contributing
+
+Feel free to fork the project and submit your contributions via pull requests.
+This project is nowhere near the best efficiency it could be, so feel free to improve it!
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE.md file for details.
