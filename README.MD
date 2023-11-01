@@ -13,17 +13,17 @@ These instructions will get you a copy of the project up and running on your loc
 ### Installation
 
 <ol>
-<li>Clone the repository using `git clone https://github.com/Supermarcel10/JavaSATSolver.git`</li>
+<li>Clone the repository using <code>git clone https://github.com/Supermarcel10/JavaSATSolver.git`</code></li>
 <li>Navigate to the project directory:<br>
-`cd JavaSATSolver`</li>
+<code>cd JavaSATSolver</code></li>
 <li>Compile the Java files:<br>
-`javac *.java`</li>
+<code>javac *.java</code></li>
 </ol>
 
 ### Usage
 
 To run the SAT Solver, execute the following command:
-`java Main`
+<code>java Main</code>
 
 ## DPLL Algorithm
 
